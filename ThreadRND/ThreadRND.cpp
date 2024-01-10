@@ -2,13 +2,28 @@
 #include <Windows.h>
 
 int pintRNDNumber;
+HANDLE pmMutex01;
 
 DWORD WINAPI RNDGenerator (LPVOID lpParam)
 {
+    DWORD ldwRetVal;
+
     for (;;)
     {
-        pintRNDNumber++;
-        if (pintRNDNumber > 6) pintRNDNumber = 1; 
+        ldwRetVal=WaitForSingleObject(pmMutex01, 2000);
+
+        if (ldwRetVal == WAIT_OBJECT_0)
+        {
+            __try
+            {
+                pintRNDNumber++;
+                if (pintRNDNumber > 6) pintRNDNumber = 1;
+            }
+            __finally
+            {
+                ReleaseMutex(pmMutex01);
+            }
+        }
     }
     
     return 0;
@@ -16,9 +31,24 @@ DWORD WINAPI RNDGenerator (LPVOID lpParam)
 
 DWORD WINAPI RNDReader(LPVOID lpParam)
 {
-    for (int i=0;i<20;i++)
+    DWORD ldwRetVal;
+
+    for (int i=0;i<25;i++)
     {
-        printf("%i,", pintRNDNumber);
+        ldwRetVal = WaitForSingleObject(pmMutex01, 2000);
+
+        if (ldwRetVal == WAIT_OBJECT_0)
+        {
+            __try
+            {
+                printf("%i,", pintRNDNumber);
+            }
+            __finally
+            {
+                ReleaseMutex(pmMutex01);
+            }
+        }
+
         Sleep(200);
     }
 
@@ -29,6 +59,9 @@ int main()
 {
     DWORD ldwThread1Id, ldwThread2Id;
     HANDLE lhThread2Id;
+
+    // vytvoření mutexu
+    pmMutex01 = CreateMutex(NULL, FALSE, NULL);
 
     // int proměnné
     pintRNDNumber = 1;
